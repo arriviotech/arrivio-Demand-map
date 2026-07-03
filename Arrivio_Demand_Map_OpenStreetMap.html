@@ -2735,7 +2735,6 @@ function nameVars(n) {
     } else {
       const name = S.selStates[0], d = STATES_DATA[name];
       const tam = stateTAM(name, metric), intlTAM = stateIntl(name) * TAM_PER_PERSON, totTAM = stateTotal(name) * TAM_PER_PERSON;
-      const comp = INFLOW_COMPOSITION.map(c => `${c.label} ${c.pct}%`).join(' · ');
       const dm = DOM_MOVES && DOM_MOVES[name];
       let rows = `<tr><td>Population</td><td class="num">${fmt(d.pop)}</td></tr>
         <tr><td>Inflow / yr (${isT ? 'total' : 'international'})</td><td class="num">${fmt(stateInflow(name, metric))}</td></tr>
@@ -2748,10 +2747,7 @@ function nameVars(n) {
         <div class="splace">Total Addressable Market · €${TAM_PER_PERSON / 1000}k per migrant</div>
         ${seg}
         <table>${rows}</table>
-        ${multiBtn}
-        ${isT && dm ? `<p class="hint" style="margin-top:8px"><b>In-state movement:</b> Germans relocating are core demand too — ~2.8M people/yr move across district lines nationally, most staying within their own state (Destatis). This state's net migration: <b>+${fmt(dm.saldo)}/yr</b> (${fmt(dm.zuzuege)} in / ${fmt(dm.fortzuege)} out, incl. international) — Destatis 2022.</p>` : ''}
-        <p class="hint" style="margin-top:${isT && dm ? 4 : 8}px">National inflow mix: ${esc(comp)}.</p>
-        <p class="hint" style="margin-top:4px">Top origins: ${esc(INFLOW_TOP_ORIGINS)}. TAM = inflow × €${TAM_PER_PERSON / 1000}k. Source: Destatis 2024.</p>`;
+        ${multiBtn}`;
     }
     showSelCard(html);
     document.querySelectorAll('#card-metric [data-metric]').forEach(b => b.onclick = () => setStateMetric(b.dataset.metric));
