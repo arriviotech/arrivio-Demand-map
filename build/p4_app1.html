@@ -1110,7 +1110,7 @@
       const rows = sorted.map(n => `<tr><td>${esc(STATE_SHORT[n] || n)}</td><td class="num">${eurShort(stateTAM(n, metric))}</td></tr>`).join('');
       html = `
         <div class="sname">${S.selStates.length} states · combined TAM</div>
-        <div class="splace">${isT ? 'Total (incl. domestic)' : 'International'} inflow · €${TAM_PER_PERSON / 1000}k per person</div>
+        <div class="splace">${isT ? 'Total (incl. domestic)' : 'International'} inflow · €${TAM_PER_PERSON / 1000}k per migrant</div>
         ${seg}
         <table>
           <tr><td><b>Combined TAM</b></td><td class="num"><b style="color:var(--acct);font-size:1.18em">${eurShort(total)}</b></td></tr>
@@ -1121,7 +1121,6 @@
     } else {
       const name = S.selStates[0], d = STATES_DATA[name];
       const tam = stateTAM(name, metric), intlTAM = stateIntl(name) * TAM_PER_PERSON, totTAM = stateTotal(name) * TAM_PER_PERSON;
-      const comp = INFLOW_COMPOSITION.map(c => `${c.label} ${c.pct}%`).join(' · ');
       const dm = DOM_MOVES && DOM_MOVES[name];
       let rows = `<tr><td>Population</td><td class="num">${fmt(d.pop)}</td></tr>
         <tr><td>Inflow / yr (${isT ? 'total' : 'international'})</td><td class="num">${fmt(stateInflow(name, metric))}</td></tr>
@@ -1131,13 +1130,10 @@
       if (isT && dm) rows += `<tr><td>Net migration ’22</td><td class="num"><b style="color:#0f6f38">+${fmt(dm.saldo)}</b>/yr</td></tr>`;
       html = `
         <div class="sname">${esc(name)}</div>
-        <div class="splace">Total Addressable Market · €${TAM_PER_PERSON / 1000}k per person</div>
+        <div class="splace">Total Addressable Market · €${TAM_PER_PERSON / 1000}k per migrant</div>
         ${seg}
         <table>${rows}</table>
-        ${multiBtn}
-        ${isT && dm ? `<p class="hint" style="margin-top:8px"><b>In-state movement:</b> Germans relocating are core demand too — ~2.8M people/yr move across district lines nationally, most staying within their own state (Destatis). This state's net migration: <b>+${fmt(dm.saldo)}/yr</b> (${fmt(dm.zuzuege)} in / ${fmt(dm.fortzuege)} out, incl. international) — Destatis 2022.</p>` : ''}
-        <p class="hint" style="margin-top:${isT && dm ? 4 : 8}px">National inflow mix: ${esc(comp)}.</p>
-        <p class="hint" style="margin-top:4px">Top origins: ${esc(INFLOW_TOP_ORIGINS)}. TAM = inflow × €${TAM_PER_PERSON / 1000}k. Source: Destatis 2024.</p>`;
+        ${multiBtn}`;
     }
     showSelCard(html);
     document.querySelectorAll('#card-metric [data-metric]').forEach(b => b.onclick = () => setStateMetric(b.dataset.metric));
