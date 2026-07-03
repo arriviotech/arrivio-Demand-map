@@ -27,7 +27,7 @@ async function get(url) {
 }
 
 // ---- collect feed entries: cached pages + (optionally) a fresh refresh pass ----
-const feed = {}; // code → { price, mk }
+const feed = {}; // code → { price, mk, rooms }
 function harvest(xml) {
   for (const em of xml.match(/<entry\b[\s\S]*?<\/entry>/gi) || []) {
     const url = (em.match(/<link[^>]+href=["']([^"']+)["']/i) || [])[1] || '';
@@ -35,7 +35,8 @@ function harvest(xml) {
     if (!code) continue;
     const price = ((em.match(/<(?:[\w]+:)?price\b[^>]*>([\s\S]*?)<\/(?:[\w]+:)?price>/i) || [])[1] || '').trim();
     const mk = ((em.match(/<(?:[\w]+:)?marketingType\b[^>]*>([\s\S]*?)<\/(?:[\w]+:)?marketingType>/i) || [])[1] || '').toLowerCase();
-    feed[code] = { price, mk };                                     // later pages/fresher passes overwrite
+    const rooms = ((em.match(/<(?:[\w]+:)?rooms\b[^>]*>([\s\S]*?)<\/(?:[\w]+:)?rooms>/i) || [])[1] || '').trim();  // cm:rooms = real listed room count
+    feed[code] = { price, mk, rooms };                             // later pages/fresher passes overwrite
   }
 }
 import { readdirSync } from 'node:fs';
@@ -75,18 +76,24 @@ const H = rows[0]; const I = {}; H.forEach((k, i) => I[k] = i);
 const realPrice = v => (v && v >= 5000 && v < 50000000 && !/^9+$/.test(String(v))) ? v : null;
 const realLease = v => (v && v >= 200 && v <= 150000 && !/^9+$/.test(String(v))) ? v : null;
 
-let saleSet = 0, leaseSet = 0, already = 0, noFeed = 0, onReq = 0;
+let saleSet = 0, leaseSet = 0, roomsSet = 0, already = 0, noFeed = 0, onReq = 0;
 for (const r of rows.slice(1)) {
   if (!r || r[I.source] !== 'ahgzimmo.de') continue;
-  const hasFigure = (r[I.price_eur] || '').trim() || (r[I.rent_eur_m2_min] || '').trim() || (r[I.rent_eur_m2_max] || '').trim() || /rent\s*~?[\d.,]+\s*EUR\/mo/i.test(r[I.notes] || '');
-  if (hasFigure) { already++; continue; }
   const code = (r[I.listing_id] || '').replace(/^ahgz-/, '');
   const e = feed[code];
   if (!e) { noFeed++; continue; }
+
+  // ROOMS: the listing's own stated count beats the area÷20 estimate (import_captures uses the rooms
+  // column first → rooms_basis='listed'). Only fill when our column is empty — never overwrite a value.
+  if (!(r[I.rooms] || '').trim()) { const rn = parseInt(String(e.rooms).replace(/[^\d]/g, ''), 10) || 0; if (rn > 0 && rn <= 2000) { r[I.rooms] = String(rn); roomsSet++; } }
+
+  // PRICE: only when the row carries no figure yet (idempotent)
+  const hasFigure = (r[I.price_eur] || '').trim() || (r[I.rent_eur_m2_min] || '').trim() || (r[I.rent_eur_m2_max] || '').trim() || /rent\s*~?[\d.,]+\s*EUR\/mo/i.test(r[I.notes] || '');
+  if (hasFigure) { already++; continue; }
   const n = parseInt(String(e.price).replace(/[^\d]/g, ''), 10) || 0;
   const isSale = (r[I.deal] || '').trim() === 'sale' || /sale|purchase|kauf/.test(e.mk);
   if (isSale) { const v = realPrice(n); if (v) { r[I.price_eur] = String(v); saleSet++; } else onReq++; }
   else { const v = realLease(n); if (v) { r[I.notes] = ((r[I.notes] || '').trim() ? r[I.notes].trim() + '; ' : '') + 'rent ~' + v + ' EUR/mo'; leaseSet++; } else onReq++; }
 }
 writeFileSync(CSV, '﻿' + rows.map(r => r.map(cell).join(',')).join('\n') + '\n');
-process.stdout.write('backfilled → lease rents: ' + leaseSet + ' · sale prices: ' + saleSet + ' · already priced: ' + already + ' · feed says on-request: ' + onReq + ' · not in feed: ' + noFeed + '\n');
+process.stdout.write('backfilled → rooms: ' + roomsSet + ' · lease rents: ' + leaseSet + ' · sale prices: ' + saleSet + ' · already priced: ' + already + ' · feed says on-request: ' + onReq + ' · not in feed: ' + noFeed + '\n');

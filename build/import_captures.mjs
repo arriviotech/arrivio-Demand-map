@@ -100,6 +100,9 @@ function roomCount(r, at, area) {
   const blob = ((r.name || '') + ' ' + (r.notes || '')).toLowerCase();
   if (listed && listed > 0) return { rooms: Math.round(listed), rooms_basis: 'listed' };            // 1. explicit rooms column
   const um = blob.match(UNIT_RE); if (um) { const v = +um[1]; if (v > 0 && v < 5000) return { rooms: v, rooms_basis: 'listed' }; } // 1. "X units/Zimmer/Einheiten"
+  // 1b. stated BEDS (real lodging capacity, no room count given) → derive rooms at ~1.5 beds/room.
+  // Beds ≠ rooms so it's flagged estimated, but it beats area÷20 for hotels/gastro (and rescues plot-area cases).
+  const bm = blob.match(/(\d{1,4})\s*betten/i); if (bm) { const beds = +bm[1]; if (beds > 0 && beds < 6000) { const rm = Math.max(1, Math.round(beds / 1.5)); return { rooms: rm, rooms_basis: 'estimated', rooms_note: '≈ ' + rm + ' rooms from ' + beds + ' beds (est., ~1.5 beds/room)' }; } }
   if (at === 'land_plot') return { rooms: null, rooms_basis: 'n/a', rooms_note: 'area is plot size, not a building' };          // 3. guards
   if (PARK_RE.test(blob)) return { rooms: null, rooms_basis: 'n/a', rooms_note: 'parking — not living space' };
   if (at === 'industrial_hall' || WARE_RE.test(blob)) return { rooms: null, rooms_basis: 'n/a', rooms_note: 'warehouse / logistics area — not living space' };
