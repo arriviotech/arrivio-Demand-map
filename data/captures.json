@@ -31145,6 +31145,7 @@
    "lng": 7.9656,
    "lease_eur_mo": 4500,
    "lease_eur_yr": 54000,
+   "beds": 24,
    "price_defined": true
   },
   {
@@ -31959,6 +31960,7 @@
    "lng": 7.9656,
    "lease_eur_mo": 4500,
    "lease_eur_yr": 54000,
+   "beds": 24,
    "price_defined": true
   },
   {
@@ -32645,6 +32647,7 @@
    "lat": 49.2271,
    "lng": 6.9154,
    "price_eur": 900000,
+   "beds": 100,
    "price_defined": true
   },
   {
@@ -32672,6 +32675,7 @@
    "lat": 48.2832,
    "lng": 10.7808,
    "price_eur": 1800000,
+   "beds": 18,
    "price_defined": true
   },
   {
@@ -32700,6 +32704,7 @@
    "lng": 9.2529,
    "price_eur": 2950000,
    "eur_per_m2": 134,
+   "beds": 67,
    "price_defined": true
   },
   {
@@ -34963,6 +34968,7 @@
    "lng": 10.6495,
    "price_eur": 999000,
    "eur_per_m2": 238,
+   "beds": 47,
    "price_defined": true
   },
   {

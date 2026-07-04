@@ -162,7 +162,12 @@ function normalize(r, src) {
   if (lease) { rec.lease_eur_mo = lease; rec.lease_eur_yr = lease * 12; }
   const nk = num(r.nk_eur_mo); if (nk) rec.nk_eur_mo = nk;
   const ab = num(r.abloese_eur); if (ab != null) rec.abloese_eur = ab;
-  const beds = num(r.beds); if (beds) rec.beds = beds;
+  // Beds — a LISTED lodging fact. Prefer the beds column; else read the count the listing states in its
+  // name/notes ("24 Betten", "ca. 100 Betten"). Surfaced as its own row so the listing's real figure is
+  // shown, not hidden behind the derived room estimate (rooms stay separate — listed if given, else est.).
+  let beds = num(r.beds);
+  if (!beds) { const bm = ((r.name || '') + ' ' + notesRaw).match(/(\d{1,4})\s*betten\b/i); if (bm) { const v = +bm[1]; if (v > 0 && v < 10000) beds = v; } }
+  if (beds) rec.beds = beds;
   // JLL: derive the per-property page from the verified listing code (e.g. jll-D0449 → /bueros/d0449), never the city search URL
   if (/jll/i.test(rec.source) && JLL_PATH[rec.asset_type]) {
     const code = (r.listing_id || '').replace(/^jll-/i, '').trim();
