@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "purpose": "German property/hotel deal sources our online crawl CANNOT reach (anti-bot, login wall, CAPTCHA, or crawl policy) or has NOT yet probed. Surfaced in the coverage tracker so the map is honest that its supply is not exhaustive — these are the known blind spots.",
+    "updated": "2026-07-07",
+    "note": "CAPTCHAs are never solved and login/paywalled inventory is never scraped (policy). 'cannot_crawl' = structurally blocked; 'not_yet_probed' = reachable in principle, queued for a future pass."
+  },
+  "cannot_crawl": [
+    { "name": "ImmobilienScout24", "url": "https://www.immobilienscout24.de", "segment": "residential + commercial", "why": "Largest German property portal by far; aggressive anti-bot (DataDome) and login walls; excluded by our crawl policy. The single biggest blind spot.", "relevance": "very high" },
+    { "name": "Immowelt", "url": "https://www.immowelt.de", "segment": "residential + commercial", "why": "Major portal; bot protection + login gating; policy-excluded.", "relevance": "high" },
+    { "name": "Immonet", "url": "https://www.immonet.de", "segment": "residential + commercial", "why": "Immowelt group; same bot protection.", "relevance": "medium" },
+    { "name": "Kleinanzeigen (ex eBay Kleinanzeigen)", "url": "https://www.kleinanzeigen.de", "segment": "private classifieds — MFH / Zinshaus / Gewerbe", "why": "Very large private-seller inventory (distressed/off-market angle), but anti-bot and seller contact gated behind login.", "relevance": "high" },
+    { "name": "hospitalityInside", "url": "https://www.hospitalityinside.com", "segment": "hotel transactions / trade", "why": "Subscription/paywall; hotel deal flow behind login.", "relevance": "low-medium" }
+  ],
+  "not_yet_probed": [
+    { "name": "ZVG-Portal (Zwangsversteigerungen)", "url": "https://www.zvg-portal.de", "segment": "court foreclosure auctions (distressed)", "why": "Official per-Bundesland foreclosure listings — high value for distressed buildings that fit the acquisition thesis; structured but not yet crawled.", "relevance": "high" },
+    { "name": "Gewerbeimmobilien24", "url": "https://www.gewerbeimmobilien24.de", "segment": "commercial", "why": "Commercial portal; not yet probed for crawlability.", "relevance": "medium" },
+    { "name": "Immobilien.de", "url": "https://www.immobilien.de", "segment": "residential + commercial", "why": "General portal; not yet probed.", "relevance": "medium" }
+  ]
+}

@@ -100,6 +100,9 @@ function roomCount(r, at, area) {
   const blob = ((r.name || '') + ' ' + (r.notes || '')).toLowerCase();
   if (listed && listed > 0) return { rooms: Math.round(listed), rooms_basis: 'listed' };            // 1. explicit rooms column
   const um = blob.match(UNIT_RE); if (um) { const v = +um[1]; if (v > 0 && v < 5000) return { rooms: v, rooms_basis: 'listed' }; } // 1. "X units/Zimmer/Einheiten"
+  // 1b. stated BEDS (real lodging capacity, no room count given) → derive rooms at ~1.5 beds/room.
+  // Beds ≠ rooms so it's flagged estimated, but it beats area÷20 for hotels/gastro (and rescues plot-area cases).
+  const bm = blob.match(/(\d{1,4})\s*betten/i); if (bm) { const beds = +bm[1]; if (beds > 0 && beds < 6000) { const rm = Math.max(1, Math.round(beds / 1.5)); return { rooms: rm, rooms_basis: 'estimated', rooms_note: '≈ ' + rm + ' rooms from ' + beds + ' beds (est., ~1.5 beds/room)' }; } }
   if (at === 'land_plot') return { rooms: null, rooms_basis: 'n/a', rooms_note: 'area is plot size, not a building' };          // 3. guards
   if (PARK_RE.test(blob)) return { rooms: null, rooms_basis: 'n/a', rooms_note: 'parking — not living space' };
   if (at === 'industrial_hall' || WARE_RE.test(blob)) return { rooms: null, rooms_basis: 'n/a', rooms_note: 'warehouse / logistics area — not living space' };
@@ -159,7 +162,12 @@ function normalize(r, src) {
   if (lease) { rec.lease_eur_mo = lease; rec.lease_eur_yr = lease * 12; }
   const nk = num(r.nk_eur_mo); if (nk) rec.nk_eur_mo = nk;
   const ab = num(r.abloese_eur); if (ab != null) rec.abloese_eur = ab;
-  const beds = num(r.beds); if (beds) rec.beds = beds;
+  // Beds — a LISTED lodging fact. Prefer the beds column; else read the count the listing states in its
+  // name/notes ("24 Betten", "ca. 100 Betten"). Surfaced as its own row so the listing's real figure is
+  // shown, not hidden behind the derived room estimate (rooms stay separate — listed if given, else est.).
+  let beds = num(r.beds);
+  if (!beds) { const bm = ((r.name || '') + ' ' + notesRaw).match(/(\d{1,4})\s*betten\b/i); if (bm) { const v = +bm[1]; if (v > 0 && v < 10000) beds = v; } }
+  if (beds) rec.beds = beds;
   // JLL: derive the per-property page from the verified listing code (e.g. jll-D0449 → /bueros/d0449), never the city search URL
   if (/jll/i.test(rec.source) && JLL_PATH[rec.asset_type]) {
     const code = (r.listing_id || '').replace(/^jll-/i, '').trim();
