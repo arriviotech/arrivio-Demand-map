@@ -983,8 +983,20 @@
   function coverageNote() {
     const chip = s => s === 'sourced' ? '<span class="cov-chip ok">Sourced</span>' : s === 'queued' ? '<span class="cov-chip q">Queued</span>' : '<span class="cov-chip no">Blocked</span>';
     const cnt = {}; PROPS.forEach(p => cnt[p.source] = (cnt[p.source] || 0) + 1);
-    return '<div style="margin-bottom:6px"><b>Source coverage</b> — what is in the data vs. still outstanding.</div>' + COVERAGE.map(c =>
+    let html = '<div style="margin-bottom:6px"><b>Source coverage</b> — what is in the data vs. still outstanding.</div>' + COVERAGE.map(c =>
       `<div class="cov-row">${chip(c.status)}<b>${esc(c.name)}</b>${cnt[c.name] ? ' <span style="color:var(--t3)">' + fmt(cnt[c.name]) + '</span>' : ''}${c.note ? ` <span style="color:var(--t3)">— ${esc(c.note)}</span>` : ''}<a href="${esc(c.url)}" target="_blank" rel="noopener" style="margin-left:auto;white-space:nowrap">view directly ↗</a></div>`).join('');
+    // Known coverage gaps — German deal sources our crawl can't reach or hasn't probed (honesty footnote)
+    const G = (typeof COVERAGE_GAPS !== 'undefined' && COVERAGE_GAPS) ? COVERAGE_GAPS : null;
+    if (G) {
+      const dot = rel => { const r = (rel || '').toLowerCase(); const c = r.includes('very high') ? '#dc2626' : r.includes('high') ? '#ea580c' : r.includes('medium') ? '#ca8a04' : '#94a3b8'; return `<span class="gap-dot" style="background:${c}" title="relevance: ${esc(rel || '—')}"></span>`; };
+      const grp = (arr, label) => (arr && arr.length) ? `<div class="gap-hd">${esc(label)}</div>` + arr.map(g =>
+        `<div class="cov-row gap-row" title="${esc(g.why || '')}">${dot(g.relevance)}<a href="${esc(g.url)}" target="_blank" rel="noopener"><b>${esc(g.name)}</b></a> <span class="gap-seg">${esc(g.segment || '')}</span></div>`).join('') : '';
+      html += `<div class="gap-block"><div class="gap-title">Not in this map (known gaps) <span>— real supply, but not exhaustive</span></div>`
+        + grp(G.cannot_crawl, "Can't crawl — anti-bot / login / policy")
+        + grp(G.not_yet_probed, 'Not yet probed — queued')
+        + `<div class="gap-foot">Hover a source for why. CAPTCHAs are never solved and login/paywalled inventory is never scraped.</div></div>`;
+    }
+    return html;
   }
   // ---- My shortlist: portfolio pro-forma roll-up across saved commercial listings ----
   function updateShortlist() {
