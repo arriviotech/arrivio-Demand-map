@@ -99,9 +99,6 @@ svg{display:block;width:100%;height:auto}
 table td{transition:background-color .25s}
 table td.chg-up{background:#e0efe5}
 table td.chg-dn{background:#f7e9dc}
-/* gold dot = assumption moved off the base case */
-.val.mod::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold);margin-left:5px;vertical-align:2px}
-.ladder input.mod{border-color:var(--gold);background:#fbf5e8}
 /* back to the demand map */
 .backmap{display:inline-flex;align-items:center;gap:6px;background:#243c31;border:1px solid rgba(198,164,94,.4);color:#EFE9DC;font-size:11.5px;font-weight:700;letter-spacing:.4px;padding:6px 12px;border-radius:8px;text-decoration:none;white-space:nowrap}
 .backmap:hover{background:#2F5D50;border-color:var(--gold)}
@@ -285,7 +282,7 @@ function buildControls(){
       const wrap=document.createElement("div");
       wrap.innerHTML='<div class="row"><label>'+lab+(tip?'<i class="info" tabindex="0" data-tip="'+tip+'">i</i>':'')+'</label><span class="val" id="v-'+key+'"></span></div><input class="slider" type="range" id="s-'+key+'" min="'+mn+'" max="'+mx+'" step="'+st+'">';
       host.appendChild(wrap); const s=wrap.querySelector("input"); s.value=S[key];
-      s.addEventListener("input",()=>{S[key]=parseFloat(s.value);const c=document.getElementById("v-"+key);c.textContent=fmt(S[key]);c.classList.toggle("mod",S[key]!==BASE[key]);render();});
+      s.addEventListener("input",()=>{S[key]=parseFloat(s.value);document.getElementById("v-"+key).textContent=fmt(S[key]);render();});
     });}
   const L=document.getElementById("ladders");
   const head=document.createElement("div");head.className="ladder";
@@ -294,12 +291,12 @@ function buildControls(){
   LADDERS.forEach(([key,lab,tip])=>{const row=document.createElement("div");row.className="ladder";
     row.innerHTML='<div class="rl">'+lab+(tip?' <i class="info" tabindex="0" data-tip="'+tip+'">i</i>':'')+'</div>'+[0,1,2,3,4].map(i=>'<input type="number" id="l-'+key+'-'+i+'" value="'+S[key][i]+'">').join("");
     L.appendChild(row);
-    [0,1,2,3,4].forEach(i=>{const inp=row.querySelector("#l-"+key+"-"+i);inp.addEventListener("input",e=>{S[key][i]=parseFloat(e.target.value)||0;inp.classList.toggle("mod",S[key][i]!==BASE[key][i]);render();});});
+    [0,1,2,3,4].forEach(i=>{row.querySelector("#l-"+key+"-"+i).addEventListener("input",e=>{S[key][i]=parseFloat(e.target.value)||0;render();});});
   });
 }
 function syncControls(){
-  for(const grp in SLIDERS) SLIDERS[grp].forEach(([key,,,,,fmt])=>{document.getElementById("s-"+key).value=S[key];const c=document.getElementById("v-"+key);c.textContent=fmt(S[key]);c.classList.toggle("mod",S[key]!==BASE[key]);});
-  LADDERS.forEach(([key])=>[0,1,2,3,4].forEach(i=>{const el=document.getElementById("l-"+key+"-"+i);el.value=S[key][i];el.classList.toggle("mod",S[key][i]!==BASE[key][i]);}));
+  for(const grp in SLIDERS) SLIDERS[grp].forEach(([key,,,,,fmt])=>{document.getElementById("s-"+key).value=S[key];document.getElementById("v-"+key).textContent=fmt(S[key]);});
+  LADDERS.forEach(([key])=>[0,1,2,3,4].forEach(i=>document.getElementById("l-"+key+"-"+i).value=S[key][i]));
 }
 function stackedBars(R){
   const W=720,H=300,ml=64,mr=12,mt=12,mb=34,cw=W-ml-mr,ch=H-mt-mb;
