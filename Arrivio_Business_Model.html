@@ -85,20 +85,6 @@ svg{display:block;width:100%;height:auto}
 .info::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--forestd);opacity:0;transition:opacity .12s;z-index:80}
 .info:hover::after,.info:focus::after,.info:hover::before,.info:focus::before{opacity:1}
 .info:hover::after,.info:focus::after{transform:translate(-50%,0)}
-/* change awareness: green = up, amber = down */
-.kpi{transition:box-shadow .2s,border-color .2s}
-.kpi .v{transition:color .15s}
-.kpi.chg-up{border-top-color:#1d7a4b;box-shadow:0 0 0 2px rgba(29,122,75,.18)}
-.kpi.chg-dn{border-top-color:#b3541e;box-shadow:0 0 0 2px rgba(179,84,30,.18)}
-.kpi.chg-up .v{color:#1d7a4b}
-.kpi.chg-dn .v{color:#b3541e}
-.derived .big b{transition:color .15s}
-.derived .big b.chg-up{color:#1d7a4b}.derived .big b.chg-dn{color:#b3541e}
-.derived .big b.chg-up::after{content:" ▲";font-size:13px}
-.derived .big b.chg-dn::after{content:" ▼";font-size:13px}
-table td{transition:background-color .25s}
-table td.chg-up{background:#e0efe5}
-table td.chg-dn{background:#f7e9dc}
 /* back to the demand map */
 .backmap{display:inline-flex;align-items:center;gap:6px;background:#243c31;border:1px solid rgba(198,164,94,.4);color:#EFE9DC;font-size:11.5px;font-weight:700;letter-spacing:.4px;padding:6px 12px;border-radius:8px;text-decoration:none;white-space:nowrap}
 .backmap:hover{background:#2F5D50;border-color:var(--gold)}
@@ -133,7 +119,7 @@ table td.chg-dn{background:#f7e9dc}
     <div class="sec">Buildings &amp; lease cost</div><div id="grp-build"></div>
     <div class="sec">Office conversion - the core driver</div><div id="grp-office"></div>
     <div class="derived">
-      <div class="big"><span>Office lease we pay / room / mo <i class="info" tabindex="0" data-tip="What we pay the landlord per converted office room: conversion cost × m² per room × landlord yield, divided by 12 months. Not set directly — move the three sliders above.">i</i></span><b id="d-officelease" data-ck="officelease">&euro;280</b></div>
+      <div class="big"><span>Office lease we pay / room / mo <i class="info" tabindex="0" data-tip="What we pay the landlord per converted office room: conversion cost × m² per room × landlord yield, divided by 12 months. Not set directly — move the three sliders above.">i</i></span><b id="d-officelease">&euro;280</b></div>
       <small id="d-officesub"></small>
     </div>
     <div class="sec">Digital &amp; partner network</div><div id="grp-digital"></div>
@@ -240,18 +226,6 @@ let S=JSON.parse(JSON.stringify(BASE));
 const eur=x=>"€"+Math.round(x).toLocaleString();
 const pct=x=>(x*100).toFixed(1)+"%";
 const abbr=x=>{const n=Math.abs(x);let s=n>=1e9?(x/1e9).toFixed(2)+"B":n>=1e6?(x/1e6).toFixed(1)+"M":n>=1e3?(x/1e3).toFixed(0)+"k":Math.round(x);return "€"+s;};
-/* ---------- change awareness: flash a figure green (up) / amber (down) when it moves ---------- */
-const LAST={},FADE={};
-function trackChange(el,key,num){
-  if(!el)return;
-  if(LAST[key]!==undefined&&isFinite(num)&&Math.abs(num-LAST[key])>1e-9){
-    el.classList.remove("chg-up","chg-dn");
-    el.classList.add(num>LAST[key]?"chg-up":"chg-dn");
-    clearTimeout(FADE[key]);
-    FADE[key]=setTimeout(()=>{const live=document.querySelector('[data-ck="'+key+'"]');if(live)live.classList.remove("chg-up","chg-dn");},900);
-  }
-  LAST[key]=num;
-}
 const SLIDERS={
  "grp-rents":[
   ["singleRent","Single room rent /mo",400,1000,10,v=>eur(v),"Monthly rent we collect from a resident renting a single (private) room."],
@@ -343,8 +317,7 @@ function kpis(R){
     ["Office lease /room",eur(R.officeLease),"auto from conversion cost","gold",R.officeLease,"What we pay per converted office room — set by the three conversion sliders, not directly."],
     ["Total rooms Y5",Math.round(R.totalRooms[4]).toLocaleString(),Math.round(R.officeRooms[4]).toLocaleString()+" converted office","",R.totalRooms[4],"Rooms we operate ourselves: leased hotels plus converted offices (partner beds not included)."]
   ];
-  document.getElementById("kpis").innerHTML=cards.map((c,i)=>'<div class="kpi '+c[3]+'" data-ck="kpi-'+i+'"><div class="k">'+c[0]+'<i class="info" tabindex="0" data-tip="'+c[5]+'">i</i></div><div class="v">'+c[1]+'</div><div class="s">'+c[2]+'</div></div>').join("");
-  cards.forEach((c,i)=>trackChange(document.querySelector('[data-ck="kpi-'+i+'"]'),"kpi-"+i,c[4]));
+  document.getElementById("kpis").innerHTML=cards.map(c=>'<div class="kpi '+c[3]+'"><div class="k">'+c[0]+'<i class="info" tabindex="0" data-tip="'+c[5]+'">i</i></div><div class="v">'+c[1]+'</div><div class="s">'+c[2]+'</div></div>').join("");
 }
 function table(R){
   const y=["Year 1","Year 2","Year 3","Year 4","Year 5"];
@@ -358,11 +331,10 @@ function table(R){
     ["Group EBITDA (incl. property co.)",R.groupE,"tot"],["Property company NAV",R.NAV,"plain"]
   ];
   let h="<thead><tr><th>EUR</th>"+y.map(t=>"<th>"+t+"</th>").join("")+"</tr></thead><tbody>";
-  rows.forEach((r,ri)=>{const cls=r[2]==="tot"?"tot":r[2]==="sub"?"sub":"";
-    const cells=r[1].map((v,ci)=>'<td data-ck="t-'+ri+'-'+ci+'">'+(r[2]==="pct"?pct(v):eur(v))+"</td>").join("");
+  rows.forEach(r=>{const cls=r[2]==="tot"?"tot":r[2]==="sub"?"sub":"";
+    const cells=r[1].map(v=>r[2]==="pct"?pct(v):eur(v)).map(x=>"<td>"+x+"</td>").join("");
     h+='<tr class="'+cls+'"><td>'+r[0]+'</td>'+cells+'</tr>';});
   document.getElementById("tbl").innerHTML=h+"</tbody>";
-  rows.forEach((r,ri)=>r[1].forEach((v,ci)=>trackChange(document.querySelector('[data-ck="t-'+ri+'-'+ci+'"]'),"t-"+ri+"-"+ci,v)));
 }
 function fitKpis(){
   var els=Array.prototype.slice.call(document.querySelectorAll(".kpi .v"));
@@ -377,9 +349,7 @@ function fitKpis(){
 }
 function render(){
   const R=computeModel(S);
-  const ol=document.getElementById("d-officelease");
-  ol.textContent=eur(R.officeLease);
-  trackChange(ol,"officelease",R.officeLease);
+  document.getElementById("d-officelease").textContent=eur(R.officeLease);
   document.getElementById("d-officesub").innerHTML="= cost/m² × m²/room × yield / 12 &nbsp;·&nbsp; landlord payback "+(1/S.llYield).toFixed(1)+" yrs &nbsp;·&nbsp; blended rent "+eur(R.blended)+"/room";
   kpis(R); stackedBars(R); lineChart(R); table(R); fitKpis();
 }
