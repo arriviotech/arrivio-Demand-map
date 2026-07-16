@@ -726,7 +726,9 @@
   // filtering happens via the Price stated/on-request toggle + the €/m² and €/room lease sliders)
   const FILTER_FIELDS = [
     { key: 'rooms', label: 'Rooms', get: p => p.rooms, fmt: v => fmt(v), step: 1, tick: 150 },
-    { key: 'area', label: 'Area m²', get: p => p.area_m2, fmt: v => fmt(v) + ' m²', step: 10, tick: 3750 },
+    // Area is min-only + log-scaled: the extent runs 30 → 340,140 m² but the median is 1,800 and 28% of
+    // listings sit under 1,000, so a linear two-handle track buried every useful value in its first 0.3%.
+    { key: 'area', label: 'Area m²', get: p => p.area_m2, fmt: v => fmt(v) + ' m²', step: 10, tick: 3750, minOnly: true, log: true },
     { key: 'lpm2', label: 'Lease €/m²·mo', get: leasePerM2, fmt: v => '€' + (Math.round(v * 10) / 10).toLocaleString('en-US'), step: 0.5, tick: 15 },
     { key: 'ppr', label: 'Pacht €/room·mo', get: pachtPerRoom, fmt: v => '€' + fmt(v), step: 5, tick: 375 },
   ];
@@ -745,6 +747,9 @@
   //  Size is governed by the Area slider; non-room types stay behind the asset-type "+More" toggle.)
   S.filter = { types: new Set(CORE_PRESENT), showOther: false, states: new Set(), favOnly: false, sort: 'm2', ranges: {}, sources: new Set() };
   for (const f of FILTER_FIELDS) S.filter.ranges[f.key] = [..._ext[f.key]];
+  // Asset types with at least one pin currently on the map (post-filter). The legend lists only these,
+  // so it never advertises a colour the user can't see. Refreshed by applyFilter().
+  let VIS_TYPES = new Set();
 
   function passRange(p, f) { const [lo, hi] = S.filter.ranges[f.key], [dlo, dhi] = _ext[f.key]; if (lo <= dlo + 1e-6 && hi >= dhi - 1e-6) return true; const v = f.get(p); if (v == null || !isFinite(v)) return false; return v >= lo && v <= hi; }
   function filtered() {
@@ -786,6 +791,8 @@
   function applyFilter() {
     if (!S.layers.props) return;
     const list = filtered();
+    VIS_TYPES = new Set(list.map(p => p.asset_type || p.kind));
+    updateLegend();
     M.renderProperties(list, selectProperty, propColor, true, flashRow);
     const roomsSum = list.reduce((a, p) => a + (p.rooms || 0), 0);
     [['n-props', NF.format(list.length)], ['fcount', NF.format(list.length)], ['fcount2', NF.format(list.length) + '/' + PROPS.length]].forEach(([id, t]) => { const el = $(id); if (el) el.textContent = t; });
@@ -834,19 +841,36 @@
     }
     g.appendChild(wrap); return g;
   }
+  // Range control. Two handles by default; `minOnly` fields drop the max handle (the range becomes
+  // "at least X"), and `log` fields map the track logarithmically so a long tail can't squash the
+  // crowded low end. Both keep writing the same [lo, hi] pair, so filtering/chips/reset are unchanged.
   function dualSlider(f) {
     const [dlo, dhi] = _ext[f.key], [clo, chi] = S.filter.ranges[f.key];
-    const g = document.createElement('div'); g.className = 'fgrp'; g.innerHTML = `<div class="flabel"><span>${f.label}</span><b class="fval">${f.fmt(clo)} – ${f.fmt(chi)}</b></div>`;
+    const st = f.step || 1, POS = 1000;
+    const useLog = !!f.log && dlo > 0 && dhi > dlo;
+    const L0 = useLog ? Math.log(dlo) : 0, LR = useLog ? Math.log(dhi) - L0 : 1;
+    const toPos = v => useLog ? Math.round(POS * (Math.log(Math.min(dhi, Math.max(dlo, v))) - L0) / LR) : v;
+    const toVal = p => { if (!useLog) return +p; const v = Math.exp(L0 + (+p / POS) * LR); const q = v < 1e3 ? st : v < 1e4 ? 100 : 1000; return Math.min(dhi, Math.max(dlo, Math.round(v / q) * q)); };
+    const pctOf = v => useLog ? toPos(v) / POS * 100 : (v - dlo) / ((dhi - dlo) || 1) * 100;
+    const g = document.createElement('div'); g.className = 'fgrp'; g.innerHTML = `<div class="flabel"><span>${f.label}</span><b class="fval"></b></div>`;
     const d = document.createElement('div'); d.className = 'dual';
     const track = document.createElement('div'); track.className = 'track'; const fill = document.createElement('div'); fill.className = 'fill';
-    const lo = document.createElement('input'), hi = document.createElement('input');
-    [lo, hi].forEach((s, i) => { s.type = 'range'; s.min = dlo; s.max = dhi; s.step = f.step || 1; s.value = i ? chi : clo; });
-    d.append(track, fill, lo, hi);
-    if (f.tick != null && f.tick >= dlo && f.tick <= dhi) { const t = document.createElement('div'); t.className = 'tick'; t.style.left = ((f.tick - dlo) / ((dhi - dlo) || 1) * 100) + '%'; t.title = 'model target'; d.appendChild(t); }
+    const lo = document.createElement('input'); const hi = f.minOnly ? null : document.createElement('input');
+    [lo, hi].filter(Boolean).forEach((s, i) => { s.type = 'range'; s.min = useLog ? 0 : dlo; s.max = useLog ? POS : dhi; s.step = useLog ? 1 : st; s.value = toPos(i ? chi : clo); });
+    d.append(track, fill, ...[lo, hi].filter(Boolean));
+    if (f.tick != null && f.tick >= dlo && f.tick <= dhi) { const t = document.createElement('div'); t.className = 'tick'; t.style.left = pctOf(f.tick) + '%'; t.title = 'model target'; d.appendChild(t); }
     g.appendChild(d);
     const val = g.querySelector('.fval');
-    const upd = () => { const A = Math.min(+lo.value, +hi.value), Bv = Math.max(+lo.value, +hi.value); S.filter.ranges[f.key] = [A, Bv]; const pa = (A - dlo) / ((dhi - dlo) || 1) * 100, pb = (Bv - dlo) / ((dhi - dlo) || 1) * 100; fill.style.left = pa + '%'; fill.style.width = Math.max(0, pb - pa) + '%'; val.textContent = f.fmt(A) + ' – ' + f.fmt(Bv); _debApply(); };
-    lo.oninput = upd; hi.oninput = upd; upd(); return g;
+    const upd = () => {
+      const a = toVal(lo.value), b = hi ? toVal(hi.value) : dhi;
+      const A = hi ? Math.min(a, b) : a, Bv = hi ? Math.max(a, b) : dhi;
+      S.filter.ranges[f.key] = [A, Bv];
+      const pa = pctOf(A), pb = pctOf(Bv);
+      fill.style.left = pa + '%'; fill.style.width = Math.max(0, pb - pa) + '%';
+      val.textContent = f.minOnly ? (A <= dlo + 1e-6 ? 'any size' : f.fmt(A) + ' and up') : f.fmt(A) + ' – ' + f.fmt(Bv);
+      _debApply();
+    };
+    lo.oninput = upd; if (hi) hi.oninput = upd; upd(); return g;
   }
   // Deal segment for the filter popup — shares S.propDeal with the sidebar via setPropDeal (two-way).
   function dealSeg() {
@@ -943,7 +967,10 @@
     const up = () => { dragging = false; el.classList.remove('dragging'); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up); };
     handle.addEventListener('mousedown', down); handle.addEventListener('touchstart', down, { passive: false });
   }
-  (function setupLegendUI() { const lg = $('legend'); if (!lg) return; const hd = lg.querySelector('.legend-hd'); if (hd) makeDraggable(lg, hd); const hide = $('legend-hide'), show = $('legend-show'); if (hide && show) { hide.onclick = () => { lg.hidden = true; show.hidden = false; }; show.onclick = () => { lg.hidden = false; show.hidden = true; }; } })();
+  // Manual hide/show preference. updateLegend() layers auto-hiding (nothing to explain) on top of it:
+  // an empty legend hides both the panel AND the "▦ Legend" chip, without forgetting this choice.
+  let legendUserHidden = false;
+  (function setupLegendUI() { const lg = $('legend'); if (!lg) return; const hd = lg.querySelector('.legend-hd'); if (hd) makeDraggable(lg, hd); const hide = $('legend-hide'), show = $('legend-show'); if (hide && show) { hide.onclick = () => { legendUserHidden = true; lg.hidden = true; show.hidden = false; }; show.onclick = () => { legendUserHidden = false; lg.hidden = false; show.hidden = true; }; } })();
   function buildSupplyPanel() {
     if ($('supply-pop')) return;
     const pop = document.createElement('div'); pop.className = 'supply-pop'; pop.id = 'supply-pop'; pop.hidden = true;

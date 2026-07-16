@@ -92,8 +92,6 @@ svg{display:block;width:100%;height:auto}
 .kpi.chg-dn{border-top-color:#b3541e;box-shadow:0 0 0 2px rgba(179,84,30,.18)}
 .kpi.chg-up .v{color:#1d7a4b}
 .kpi.chg-dn .v{color:#b3541e}
-.kpi .d{font-size:11px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
-.kpi .d.up{color:#1d7a4b}.kpi .d.dn{color:#b3541e}
 .derived .big b{transition:color .15s}
 .derived .big b.chg-up{color:#1d7a4b}.derived .big b.chg-dn{color:#b3541e}
 .derived .big b.chg-up::after{content:" ▲";font-size:13px}
@@ -245,8 +243,7 @@ let S=JSON.parse(JSON.stringify(BASE));
 const eur=x=>"€"+Math.round(x).toLocaleString();
 const pct=x=>(x*100).toFixed(1)+"%";
 const abbr=x=>{const n=Math.abs(x);let s=n>=1e9?(x/1e9).toFixed(2)+"B":n>=1e6?(x/1e6).toFixed(1)+"M":n>=1e3?(x/1e3).toFixed(0)+"k":Math.round(x);return "€"+s;};
-/* ---------- change awareness: flash a figure when it moves, show drift vs the base case ---------- */
-const R0=computeModel(BASE);
+/* ---------- change awareness: flash a figure green (up) / amber (down) when it moves ---------- */
 const LAST={},FADE={};
 function trackChange(el,key,num){
   if(!el)return;
@@ -258,7 +255,6 @@ function trackChange(el,key,num){
   }
   LAST[key]=num;
 }
-const delta=(v,b)=>{if(!isFinite(v)||!isFinite(b)||Math.abs(b)<1e-9)return"";const d=(v-b)/Math.abs(b);if(Math.abs(d)<0.001)return"";const up=d>0;return'<div class="d '+(up?"up":"dn")+'">'+(up?"▲ +":"▼ -")+Math.abs(d*100).toFixed(1)+"% vs base</div>";};
 const SLIDERS={
  "grp-rents":[
   ["singleRent","Single room rent /mo",400,1000,10,v=>eur(v),"Monthly rent we collect from a resident renting a single (private) room."],
@@ -343,14 +339,14 @@ function lineChart(R){
 }
 function kpis(R){
   const cards=[
-    ["Year 5 revenue",eur(R.total[4]),"total, all engines","",R.total[4],R0.total[4],"All four engines added together in year 5."],
-    ["Year 5 EBITDA",eur(R.ebitda[4]),"margin "+pct(R.em[4]),"",R.ebitda[4],R0.ebitda[4],"Year-5 operating profit before interest, tax, depreciation and amortisation."],
-    ["Group EBITDA Y5",eur(R.groupE[4]),"incl. property company","",R.groupE[4],R0.groupE[4],"Operating EBITDA plus the net rent distributions of the sister property company."],
-    ["PropCo NAV Y5",eur(R.NAV[4]),eur(R.valC[4])+" value created","gold",R.NAV[4],R0.NAV[4],"Net asset value of the property company: portfolio value minus its debt."],
-    ["Office lease /room",eur(R.officeLease),"auto from conversion cost","gold",R.officeLease,R0.officeLease,"What we pay per converted office room — set by the three conversion sliders, not directly."],
-    ["Total rooms Y5",Math.round(R.totalRooms[4]).toLocaleString(),Math.round(R.officeRooms[4]).toLocaleString()+" converted office","",R.totalRooms[4],R0.totalRooms[4],"Rooms we operate ourselves: leased hotels plus converted offices (partner beds not included)."]
+    ["Year 5 revenue",eur(R.total[4]),"total, all engines","",R.total[4],"All four engines added together in year 5."],
+    ["Year 5 EBITDA",eur(R.ebitda[4]),"margin "+pct(R.em[4]),"",R.ebitda[4],"Year-5 operating profit before interest, tax, depreciation and amortisation."],
+    ["Group EBITDA Y5",eur(R.groupE[4]),"incl. property company","",R.groupE[4],"Operating EBITDA plus the net rent distributions of the sister property company."],
+    ["PropCo NAV Y5",eur(R.NAV[4]),eur(R.valC[4])+" value created","gold",R.NAV[4],"Net asset value of the property company: portfolio value minus its debt."],
+    ["Office lease /room",eur(R.officeLease),"auto from conversion cost","gold",R.officeLease,"What we pay per converted office room — set by the three conversion sliders, not directly."],
+    ["Total rooms Y5",Math.round(R.totalRooms[4]).toLocaleString(),Math.round(R.officeRooms[4]).toLocaleString()+" converted office","",R.totalRooms[4],"Rooms we operate ourselves: leased hotels plus converted offices (partner beds not included)."]
   ];
-  document.getElementById("kpis").innerHTML=cards.map((c,i)=>'<div class="kpi '+c[3]+'" data-ck="kpi-'+i+'"><div class="k">'+c[0]+'<i class="info" tabindex="0" data-tip="'+c[6]+'">i</i></div><div class="v">'+c[1]+'</div><div class="s">'+c[2]+'</div>'+delta(c[4],c[5])+'</div>').join("");
+  document.getElementById("kpis").innerHTML=cards.map((c,i)=>'<div class="kpi '+c[3]+'" data-ck="kpi-'+i+'"><div class="k">'+c[0]+'<i class="info" tabindex="0" data-tip="'+c[5]+'">i</i></div><div class="v">'+c[1]+'</div><div class="s">'+c[2]+'</div></div>').join("");
   cards.forEach((c,i)=>trackChange(document.querySelector('[data-ck="kpi-'+i+'"]'),"kpi-"+i,c[4]));
 }
 function table(R){
